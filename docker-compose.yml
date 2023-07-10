@@ -1,0 +1,66 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    hostname: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: postgres
+
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: pass
+    depends_on:
+      - postgres  
+    ports:
+      - "3001:80"    
+
+  to-do-list-page-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: to-do-list-page-backend
+    command: sh -c "npm run migrate && node dist/main"
+    working_dir: /
+    depends_on:
+      - postgres
+      - pgadmin
+    environment:
+      DATABASE_URL: postgresql://user:pass@postgres:5432/postgres?schema=db  
+    volumes:
+      - .:/usr/src/app
+      - node_modules_nest:/usr/src/app/backend/node_modules
+    ports:
+      - '3010:3010'
+
+  to-do-list-page-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: to-do-list-page-frontend
+    command: sh -c "yarn && yarn start"
+    working_dir: /app/frontend/
+    depends_on:
+      - to-do-list-page-backend
+    environment:
+      API_HOST: http://localhost:3010  
+    volumes:
+      - .:/app/frontend
+      - node_modules_next:/app/frontend/node_modules
+    ports:
+      - '3000:3000'
+      
+volumes:
+  node_modules_nest:
+  node_modules_next:
+  postgres-data:
